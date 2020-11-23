@@ -19,6 +19,7 @@ import { isNull, isObject, isString, isUndefined } from '@react-native-firebase/
 import FirebaseApp from '../../FirebaseApp';
 import { DEFAULT_APP_NAME } from '../constants';
 import { getAppModule } from './nativeModule';
+import RNConfigReader from 'rn-config-reader';
 
 const APP_REGISTRY = {};
 let onAppCreateFn = null;
@@ -78,10 +79,26 @@ export function getApp(name = DEFAULT_APP_NAME) {
   if (!initializedNativeApps) {
     initializeNativeApps();
   }
-  const app = APP_REGISTRY[name];
+  let app = APP_REGISTRY[name];
+
+  if (!app){
+    initializedNativeApps = false;
+    initializeApp({
+      appId: RNConfigReader.firebase_appId,
+      projectId: RNConfigReader.firebase_projectId,
+      apiKey: RNConfigReader.firebase_apiKey,
+      clientId: RNConfigReader.firebase_clientId,
+      databaseURL: RNConfigReader.firebase_databaseURL,
+      messagingSenderId: RNConfigReader.firebase_messagingSenderId,
+      storageBucket: RNConfigReader.firebase_storageBucket
+
+    }, name);
+    app = APP_REGISTRY[name];
+    initializeNativeApps();
+  }
 
   if (!app) {
-    throw new Error(`No Firebase App '${name}' has been created - call firebase.initializeApp()`);
+    throw new Error(`No Firebase App '${name}' has been created - Cannot init it`);
   }
 
   return app;
@@ -147,7 +164,7 @@ export function initializeApp(options = {}, configOrName) {
     return Promise.reject(new Error("Missing or invalid FirebaseOptions property 'databaseURL'."));
   }
 
-  // TODO - make required only if messaging/notifications module exists - init app on native ios&android needs changing also
+  //TODO - make required only if messaging/notifications module exists - init app on native ios&android needs changing also
   if (!isString(options.messagingSenderId)) {
     return Promise.reject(
       new Error("Missing or invalid FirebaseOptions property 'messagingSenderId'."),
